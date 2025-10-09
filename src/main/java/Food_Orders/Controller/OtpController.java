@@ -1,5 +1,6 @@
 package Food_Orders.Controller;
 
+import Food_Orders.Dto.OtpRequest;
 import Food_Orders.Service.OtpService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,11 +23,11 @@ public class OtpController {
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<Map<String, String>> verifyOtp(@RequestBody Map<String, String> payload) {
-        String email = payload.get("email");
-        String otp = payload.get("otp");
+    public ResponseEntity<Map<String, String>> verifyOtp(@RequestBody OtpRequest request) {
+        System.out.println("✅ Email: " + request.getEmail());
+        System.out.println("✅ OTP: " + request.getOtp());
 
-        boolean verified = otpService.verifyOtp(email, otp);
+        boolean verified = otpService.verifyOtp(request.getEmail(), request.getOtp());
         if (verified) {
             return ResponseEntity.ok(Map.of(
                     "status", "success",
