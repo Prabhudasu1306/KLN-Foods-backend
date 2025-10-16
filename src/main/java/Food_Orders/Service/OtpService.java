@@ -3,11 +3,13 @@ package Food_Orders.Service;
 import Food_Orders.Entity.OtpEntity;
 import Food_Orders.Repository.OtpRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
@@ -20,70 +22,84 @@ public class OtpService {
     @Autowired
     private OtpRepository otpRepository;
 
-    // OTP expiry time (in minutes)
     private static final int OTP_EXPIRY_MINUTES = 5;
 
-    /**
-     * Sends OTP to the given email.
-     */
-    public void sendOtp(String email) {
-        // Generate random 6-digit OTP
+    public void sendOtp(String firstName, String lastName, String mobileNumber,
+                        String email, String password, String confirmPassword, String role) {
+
+        if (!password.equals(confirmPassword)) {
+            throw new IllegalArgumentException("Passwords do not match");
+        }
+
+        Optional<OtpEntity> existing = otpRepository.findByEmail(email);
+        if (existing.isPresent() && existing.get().isVerified()) {
+            throw new IllegalArgumentException("Email already registered. Please login.");
+        }
+
         String otp = String.valueOf(100000 + new Random().nextInt(900000));
+        OtpEntity entity = new OtpEntity(firstName, lastName, mobileNumber, email,
+                password, otp, LocalDateTime.now(), false, role);
 
-        // Save OTP record to DB
-        OtpEntity entity = new OtpEntity(email, otp, LocalDateTime.now(), false);
-        otpRepository.save(entity);
+        try {
+            otpRepository.save(entity);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("Email already exists. Please login.");
+        }
 
-        // Send email with OTP included
+        // Send OTP Email
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
-        message.setSubject("Your OTP for Verification");
+        message.setSubject("Your OTP for Email Verification");
         message.setText("""
-                Hello,
+                Hello %s %s,
 
                 Your One-Time Password (OTP) is: %s
 
-                ✅ It is valid for only %d minutes.
-                ⚠️ Do not share this OTP with anyone for security reasons.
-
-                Please use this OTP to verify your email in the app or website.
+                It is valid for %d minutes.
+                Do not share this OTP with anyone.
 
                 Regards,
                 Food Orders Team
-                """.formatted(otp, OTP_EXPIRY_MINUTES));
+                """.formatted(firstName, lastName, otp, OTP_EXPIRY_MINUTES));
 
         mailSender.send(message);
-
-        System.out.println("✅ OTP generated and emailed to " + email + ": " + otp);
+        System.out.println(" OTP sent to " + email + ": " + otp);
     }
 
-    /**
-     * Verifies the provided OTP for the given email.
-     */
     public boolean verifyOtp(String email, String otp) {
-        System.out.println("Verifying OTP for: " + email + " with OTP: " + otp);
-
         Optional<OtpEntity> record = otpRepository.findTopByEmailOrderByGeneratedAtDesc(email);
-        if (record.isEmpty()) {
-            System.out.println("❌ No OTP record found for email");
-            return false;
-        }
+        if (record.isEmpty()) return false;
 
         OtpEntity entity = record.get();
         boolean notExpired = entity.getGeneratedAt()
                 .isAfter(LocalDateTime.now().minusMinutes(OTP_EXPIRY_MINUTES));
         boolean match = entity.getOtp().equals(otp);
 
-        System.out.println("Match: " + match + ", Not expired: " + notExpired);
-
         if (match && notExpired) {
             entity.setVerified(true);
             otpRepository.save(entity);
-            System.out.println("✅ OTP verified successfully for " + email);
             return true;
-        } else {
-            System.out.println("❌ OTP expired or invalid");
-            return false;
         }
+        return false;
+    }
+
+    public boolean checkLogin(String email, String password) {
+        Optional<OtpEntity> user = otpRepository.findByEmail(email);
+        return user.isPresent() && user.get().isVerified() && user.get().getPassword().equals(password);
+    }
+
+    public String getRoleByEmail(String email) {
+        return otpRepository.findByEmail(email)
+                .map(OtpEntity::getRole)
+                .orElse("UNKNOWN");
+    }
+
+    public List<OtpEntity> getAllUsers() {
+        return otpRepository.findAll();
+    }
+
+    public OtpEntity getUserByEmail(String email) {
+        return otpRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
     }
 }

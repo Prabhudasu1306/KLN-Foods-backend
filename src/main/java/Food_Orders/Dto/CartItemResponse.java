@@ -1,5 +1,11 @@
 package Food_Orders.Dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 
 public class CartItemResponse {
     private String name;

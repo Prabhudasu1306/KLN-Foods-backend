@@ -2,46 +2,70 @@ package Food_Orders.Entity;
 
 import jakarta.persistence.*;
 
-@Entity
-@Table(name = "PaymentOrders")
-public class Order {
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
+@Entity
+@Table(name = "orders")
+public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private double amount;
+
+    private String customerEmail;
+    private String customerName;
+    private String phoneNumber;
+    private Double totalAmount;
+    private LocalDateTime orderDate;
+    private String paymentStatus;
     private String transactionId;
-    private String status;
 
-    public Long getId() {
-        return id;
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "order_id")
+    private List<CartItem> cartItems = new ArrayList<>();
+
+    public Order() {
+        this.orderDate = LocalDateTime.now();
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public Order(String customerEmail, String customerName, String phoneNumber, Double totalAmount) {
+        this();
+        this.customerEmail = customerEmail;
+        this.customerName = customerName;
+        this.phoneNumber = phoneNumber;
+        this.totalAmount = totalAmount;
+        this.paymentStatus = "PENDING";
     }
 
-    public double getAmount() {
-        return amount;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setAmount(double amount) {
-        this.amount = amount;
-    }
+    public String getCustomerEmail() { return customerEmail; }
+    public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
 
-    public String getTransactionId() {
-        return transactionId;
-    }
+    public String getCustomerName() { return customerName; }
+    public void setCustomerName(String customerName) { this.customerName = customerName; }
 
-    public void setTransactionId(String transactionId) {
-        this.transactionId = transactionId;
-    }
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
-    public String getStatus() {
-        return status;
-    }
+    public Double getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public LocalDateTime getOrderDate() { return orderDate; }
+    public void setOrderDate(LocalDateTime orderDate) { this.orderDate = orderDate; }
+
+    public String getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+
+    public String getTransactionId() { return transactionId; }
+    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
+
+    public List<CartItem> getCartItems() { return cartItems; }
+    public void setCartItems(List<CartItem> cartItems) { this.cartItems = cartItems; }
+
+    public void addCartItem(CartItem item) {
+        this.cartItems.add(item);
     }
 }

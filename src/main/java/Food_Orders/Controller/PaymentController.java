@@ -1,83 +1,60 @@
 package Food_Orders.Controller;
 
-import Food_Orders.Config.PaymentWebSocketHandler;
 import Food_Orders.Entity.Payment;
-import Food_Orders.Entity.PaymentStatus;
-import Food_Orders.Exception.ErrorResponse;
+import Food_Orders.Entity.PaymentStatusEnum;
+import Food_Orders.Service.EmailService;
 import Food_Orders.Service.PaymentServices;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/payments")
-@Validated
+@RequestMapping("/api/payments")
+@CrossOrigin(origins = "http://localhost:3000")
 public class PaymentController {
-
-    private static final Logger logger = LoggerFactory.getLogger(PaymentController.class);
 
     @Autowired
     private PaymentServices paymentServices;
 
     @Autowired
-    private PaymentWebSocketHandler webSocketHandler;
-
-
-    @PostMapping("/add")
-    public ResponseEntity<Payment> addPayment(@Validated @RequestBody Payment payment) {
-        Payment createdPayment = paymentServices.addPayment(payment);
-        return new ResponseEntity<>(createdPayment, HttpStatus.CREATED);
-    }
-
+    private EmailService emailService;
 
     @GetMapping("/all")
-    public ResponseEntity<List<Payment>> getAllPayments() {
-        List<Payment> payments = paymentServices.getAllPayments();
-        return new ResponseEntity<>(payments, HttpStatus.OK);
+    public List<Payment> getAllPayments() {
+        return paymentServices.getAllPayments();
     }
-
 
     @GetMapping("/transaction/{transactionId}")
-    public ResponseEntity<?> getPaymentByTransactionId(@PathVariable String transactionId) {
-        Payment payment = paymentServices.getPaymentByTransactionId(transactionId);
-        if (payment == null) {
-            logger.warn("Payment with transaction ID {} not found.", transactionId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErrorResponse("Payment with transaction ID " + transactionId + " not found.", HttpStatus.NOT_FOUND.value()));
-        }
-        return new ResponseEntity<>(payment, HttpStatus.OK);
+    public Payment getPaymentByTransactionId(@PathVariable String transactionId) {
+        return paymentServices.getPaymentByTransactionId(transactionId);
     }
 
+    @PostMapping("/add")
+    public Payment addPayment(@RequestBody Payment payment) {
+        return paymentServices.addPayment(payment);
+    }
 
     @PutMapping("/transaction/{transactionId}/status")
-    public ResponseEntity<?> updatePaymentStatus(@PathVariable String transactionId, @Validated @RequestBody PaymentStatus paymentStatus) {
-        Payment updatedPayment = paymentServices.updatePaymentStatus(transactionId, paymentStatus.getStatus());
-        if (updatedPayment == null) {
-            logger.warn("Failed to update payment status for transaction ID {}", transactionId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErrorResponse("Payment with transaction ID " + transactionId + " not found.", HttpStatus.NOT_FOUND.value()));
-        }
-
-        // Attempt to send WebSocket message and handle potential errors
-        webSocketHandler.sendMessage(transactionId, paymentStatus.getStatus());
-
-        return ResponseEntity.ok(updatedPayment);
+    public Payment updateStatus(@PathVariable String transactionId, @RequestBody Map<String,String> request) {
+        PaymentStatusEnum status = PaymentStatusEnum.valueOf(request.get("status"));
+        return paymentServices.updatePaymentStatus(transactionId, status);
     }
 
-    @GetMapping("/status/{transactionId}")
-    public ResponseEntity<?> getPaymentStatus(@PathVariable String transactionId) {
-        PaymentStatus paymentStatus = paymentServices.getPaymentStatus(transactionId);
-        if (paymentStatus == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErrorResponse("Payment status for transaction ID " + transactionId + " not found.", HttpStatus.NOT_FOUND.value()));
+    @PostMapping("/send-invoice")
+    public Map<String,Object> sendInvoice(@RequestBody Payment payment) {
+        Map<String,Object> response = new HashMap<>();
+        try {
+            emailService.sendInvoice(payment);
+            response.put("success", true);
+            response.put("message", "Invoice sent successfully");
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", e.getMessage());
         }
-        return ResponseEntity.ok(paymentStatus);
+        return response;
     }
 }

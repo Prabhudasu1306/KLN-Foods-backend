@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 
 @AllArgsConstructor
@@ -43,5 +44,8 @@ public class CartService {
         XSSFWorkbook workbook = new XSSFWorkbook();
         new CartExcelExportUtils(carts, cartItemRepository, addressRepository, workbook).exportDataToExcel(response);
         System.out.println("Carts data successfully exported to Excel.");
+    }
+
+    public void exportOrdersToCsv(List<Cart> orders, PrintWriter writer) {
     }
 }
