@@ -1,12 +1,15 @@
 package Food_Orders.Controller;
 
+import Food_Orders.Dto.ForgotPasswordRequest;
 import Food_Orders.Dto.OtpRequest;
+import Food_Orders.Dto.ResetPasswordRequest;
 import Food_Orders.Entity.OtpEntity;
 import Food_Orders.Service.OtpService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.Map;
 
 @CrossOrigin(origins = "http://localhost:3000")
@@ -88,6 +91,50 @@ public class OtpController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "User not found"));
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        try {
+            otpService.sendPasswordResetOtp(request.getEmail());
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", "Password reset OTP sent to " + request.getEmail()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("status", "error", "message", "Server error occurred"));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody ResetPasswordRequest request) {
+        try {
+            boolean reset = otpService.resetPasswordWithOtp(
+                    request.getEmail(),
+                    request.getOtp(),
+                    request.getNewPassword()
+            );
+
+            if (reset) {
+                return ResponseEntity.ok(Map.of(
+                        "status", "success",
+                        "message", "Password reset successfully"
+                ));
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("status", "error", "message", "Password reset failed"));
+            }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("status", "error", "message", "Server error occurred"));
         }
     }
 }

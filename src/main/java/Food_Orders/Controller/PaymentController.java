@@ -57,4 +57,33 @@ public class PaymentController {
         }
         return response;
     }
+    @PostMapping("/export-csv")
+    public Map<String, Object> exportCSV(@RequestBody Map<String, String> request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String csvData = request.get("csvData");
+            String fileName = request.get("fileName");
+            String subject = request.get("subject");
+            String message = request.get("message");
+
+            // Get admin email from request or use a default
+            String adminEmail = request.get("adminEmail") != null ?
+                    request.get("adminEmail") : "prabhudasuparusu1306@gmail.com"; // Your admin email
+
+            // Validate required fields
+            if (csvData == null || csvData.trim().isEmpty()) {
+                throw new RuntimeException("CSV data is empty");
+            }
+
+            // Send CSV via email
+            emailService.sendCSVAttachment(adminEmail, subject, message, csvData, fileName);
+
+            response.put("success", true);
+            response.put("message", "CSV file sent via email successfully");
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Failed to send CSV: " + e.getMessage());
+        }
+        return response;
+    }
 }
